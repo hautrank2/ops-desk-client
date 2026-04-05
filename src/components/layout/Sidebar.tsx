@@ -22,26 +22,30 @@ export function Sidebar({ className }: { className?: string }) {
 
   return (
     <div className={cn("pb-12 border-r bg-card", className)}>
-      <div className="space-y-4 py-4">
-        <div className="px-3 py-2">
-          <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight text-primary">
-            OpsDesk
-          </h2>
-          <div className="space-y-1">
-            {navItems.map((item) => (
-              <Button
-                key={item.href}
-                render={<Link href={item.href} />}
-                variant={pathname === item.href ? "secondary" : "ghost"}
-                className="w-full justify-start"
-              >
-                <item.icon className="mr-2 h-4 w-4" />
-                {item.name}
-              </Button>
-            ))}
-          </div>
+      <ScrollArea className="h-full">
+        <div className="space-y-1 py-6 px-3">
+          <p className="mb-4 px-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Navigation
+          </p>
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+            return (
+              <Link key={item.href} href={item.href}>
+                <Button
+                  variant={isActive ? "default" : "ghost"}
+                  className={cn(
+                    "w-full justify-start gap-3 h-9",
+                    isActive && "shadow-sm"
+                  )}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  {item.name}
+                </Button>
+              </Link>
+            );
+          })}
         </div>
-      </div>
+      </ScrollArea>
     </div>
   );
 }
@@ -49,7 +53,7 @@ export function Sidebar({ className }: { className?: string }) {
 export function MobileSidebar() {
   return (
     <Sheet>
-      <SheetTrigger render={<Button variant="ghost" size="icon" className="md:hidden" />}>
+      <SheetTrigger render={<Button variant="ghost" size="icon" className="md:hidden" nativeButton={false} />}>
         <Menu className="h-5 w-5" />
       </SheetTrigger>
       <SheetContent side="left" className="p-0 w-72">

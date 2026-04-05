@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node -e \"const args = process.argv.slice(1).filter(a => a !== '--host'); require('child_process').spawnSync('next', ['dev', ...args], { stdio: 'inherit' })\"",
+    "dev": "next dev -p 3004",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3004",
     "lint": "next lint"
   },
   "dependencies": {
