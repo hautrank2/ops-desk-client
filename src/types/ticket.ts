@@ -24,7 +24,7 @@ export enum TicketStatus {
 }
 
 export interface TicketModel {
-  id: string;
+  _id: string;
   code: string;
   title: string;
   description?: string;

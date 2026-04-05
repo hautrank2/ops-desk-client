@@ -42,9 +42,9 @@ export default function Page() {
       } catch (error) {
         console.error("Failed to fetch tickets", error);
         setTickets([
-          { id: "1", code: "TKT-001", title: "AC leaking in Room 302", type: TicketType.Repair, priority: TicketPriority.High, status: TicketStatus.Doing, assetItemIds: ["1"], images: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-          { id: "2", code: "TKT-002", title: "Annual Server Maintenance", type: TicketType.Maintenance, priority: TicketPriority.Medium, status: TicketStatus.New, assetItemIds: ["2"], images: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-          { id: "3", code: "TKT-003", title: "Broken window in lobby", type: TicketType.Incident, priority: TicketPriority.Urgent, status: TicketStatus.Waiting, assetItemIds: ["3"], images: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { _id: "1", code: "TKT-001", title: "AC leaking in Room 302", type: TicketType.Repair, priority: TicketPriority.High, status: TicketStatus.Doing, assetItemIds: ["1"], images: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { _id: "2", code: "TKT-002", title: "Annual Server Maintenance", type: TicketType.Maintenance, priority: TicketPriority.Medium, status: TicketStatus.New, assetItemIds: ["2"], images: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { _id: "3", code: "TKT-003", title: "Broken window in lobby", type: TicketType.Incident, priority: TicketPriority.Urgent, status: TicketStatus.Waiting, assetItemIds: ["3"], images: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
         ]);
         setTotalPage(1);
         setTotal(3);
@@ -120,12 +120,12 @@ export default function Page() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <Link href={`/tickets/${ticket.id}`}>
+              <Link href={`/tickets/${ticket._id}`}>
                 <DropdownMenuItem>
                   <Eye className="mr-2 h-4 w-4" /> View Details
                 </DropdownMenuItem>
               </Link>
-              <Link href={`/tickets/${ticket.id}/edit`}>
+              <Link href={`/tickets/${ticket._id}/edit`}>
                 <DropdownMenuItem>
                   <Pencil className="mr-2 h-4 w-4" /> Edit
                 </DropdownMenuItem>
@@ -163,7 +163,7 @@ export default function Page() {
         totalPage={totalPage}
         total={total}
         onPageChange={setPage}
-        onRowClick={(ticket) => router.push(`/tickets/${ticket.id}`)}
+        onRowClick={(ticket) => router.push(`/tickets/${ticket._id}`)}
       />
     </div>
   );

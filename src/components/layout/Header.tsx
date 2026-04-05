@@ -13,25 +13,25 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MobileSidebar } from './Sidebar';
+import { AppBreadcrumb } from './Breadcrumb';
 import { LOCAL_KEYS } from '@/constants/local';
 
 export function Header() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-14 items-center justify-between px-4 md:px-6">
-        <div className="flex items-center gap-3">
-          <MobileSidebar />
-          <div className="hidden md:flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground text-xs font-bold">O</span>
-            </div>
-            <span className="font-bold text-lg tracking-tight">OpsDesk</span>
-          </div>
+    <header className="w-full h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-full items-center gap-4 px-4 md:px-6">
+        {/* Mobile: hamburger */}
+        <MobileSidebar />
+
+        {/* Breadcrumb — takes remaining space */}
+        <div className="flex-1 min-w-0">
+          <AppBreadcrumb />
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Right actions */}
+        <div className="flex items-center gap-2 shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="ghost" size="icon" nativeButton={false} />}>
               {theme === 'light' ? <Sun className="h-4 w-4" /> : theme === 'dark' ? <Moon className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}

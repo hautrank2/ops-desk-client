@@ -1,0 +1,209 @@
+"use client";
+
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TicketModel, TicketPriority, TicketStatus, TicketType } from "@/types/ticket";
+import { httpClient } from "@/lib/httpClient";
+
+const ticketSchema = z.object({
+  code: z.string().min(3, "Code must be at least 3 characters"),
+  title: z.string().min(5, "Title must be at least 5 characters"),
+  type: z.enum(["Repair", "Maintenance", "Request", "Incident"] as const),
+  priority: z.enum(["Low", "Medium", "High", "Urgent"] as const),
+  status: z.enum(["New", "Assigned", "Doing", "Waiting", "Done", "Cancelled"] as const),
+  description: z.string().optional(),
+  cause: z.string().optional(),
+  note: z.string().optional(),
+});
+
+type TicketFormValues = z.infer<typeof ticketSchema>;
+
+interface TicketFormProps {
+  id?: string;
+}
+
+export function TicketForm({ id }: TicketFormProps) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const isEdit = !!id;
+
+  const { data: ticket, isLoading } = useQuery<TicketModel>({
+    queryKey: ["ticket", id],
+    queryFn: async () => {
+      const { data } = await httpClient.get(`/ticket/${id}`);
+      return data;
+    },
+    enabled: isEdit,
+  });
+
+  const form = useForm<TicketFormValues>({
+    resolver: zodResolver(ticketSchema),
+    defaultValues: {
+      code: "", title: "",
+      type: TicketType.Repair,
+      priority: TicketPriority.Medium,
+      status: TicketStatus.New,
+      description: "", cause: "", note: "",
+    },
+  });
+
+  useEffect(() => {
+    if (ticket) {
+      form.reset({
+        code: ticket.code,
+        title: ticket.title,
+        type: ticket.type,
+        priority: ticket.priority,
+        status: ticket.status,
+        description: ticket.description ?? "",
+        cause: ticket.cause ?? "",
+        note: ticket.note ?? "",
+      });
+    }
+  }, [ticket, form]);
+
+  const createMutation = useMutation({
+    mutationFn: async (values: TicketFormValues) => {
+      const formData = new FormData();
+      Object.entries(values).forEach(([k, v]) => { if (v) formData.append(k, v); });
+      const { data } = await httpClient.post("/ticket", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tickets"] });
+      router.push("/tickets");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (values: TicketFormValues) => {
+      const { data } = await httpClient.patch(`/ticket/${id}`, values);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket", id] });
+      router.push("/tickets");
+    },
+  });
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
+  const onSubmit = (values: TicketFormValues) => {
+    if (isEdit) updateMutation.mutate(values);
+    else createMutation.mutate(values);
+  };
+
+  if (isEdit && isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{isEdit ? "Edit Ticket" : "New Ticket"}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{isEdit ? `Editing ${ticket?.code}` : "Create a new maintenance ticket"}</p>
+        </div>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader><CardTitle className="text-base">Ticket Information</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <FormField control={form.control} name="code" render={({ field }) => (
+                  <FormItem><FormLabel>Ticket Code</FormLabel><FormControl><Input placeholder="TKT-001" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="title" render={({ field }) => (
+                  <FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="e.g. AC leaking in Room 302" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="type" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                        <SelectContent>{Object.values(TicketType).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="priority" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Priority</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select priority" /></SelectTrigger></FormControl>
+                        <SelectContent>{Object.values(TicketPriority).map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+                <FormField control={form.control} name="status" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
+                      <SelectContent>{Object.values(TicketStatus).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="text-base">Analysis & Notes</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <FormField control={form.control} name="cause" render={({ field }) => (
+                  <FormItem><FormLabel>Root Cause</FormLabel><FormControl><Input placeholder="e.g. Blocked drainage pipe" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="note" render={({ field }) => (
+                  <FormItem><FormLabel>Internal Note</FormLabel><FormControl><Textarea placeholder="Any internal notes..." {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader><CardTitle className="text-base">Description</CardTitle></CardHeader>
+              <CardContent>
+                <FormField control={form.control} name="description" render={({ field }) => (
+                  <FormItem><FormControl><Textarea placeholder="Detailed description of the issue..." className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              {isEdit ? "Update Ticket" : "Create Ticket"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
+}

@@ -9,7 +9,7 @@ export enum AssetType {
 }
 
 export interface AssetModel {
-  id: string;
+  _id: string;
   code: string;
   name: string;
   type: AssetType;

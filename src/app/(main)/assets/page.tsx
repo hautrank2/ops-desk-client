@@ -41,9 +41,9 @@ export default function Page() {
       } catch (error) {
         console.error("Failed to fetch assets", error);
         setAssets([
-          { id: "1", code: "AST-001", name: "MacBook Pro M3", type: AssetType.IT, vendor: "Apple", model: "M3 Pro 14-inch", active: true, images: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-          { id: "2", code: "AST-002", name: 'Dell Monitor 27"', type: AssetType.IT, vendor: "Dell", model: "U2723QE", active: true, images: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-          { id: "3", code: "AST-003", name: "Office Chair", type: AssetType.Furniture, vendor: "Herman Miller", model: "Aeron", active: true, images: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { _id: "1", code: "AST-001", name: "MacBook Pro M3", type: AssetType.IT, vendor: "Apple", model: "M3 Pro 14-inch", active: true, images: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { _id: "2", code: "AST-002", name: 'Dell Monitor 27"', type: AssetType.IT, vendor: "Dell", model: "U2723QE", active: true, images: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { _id: "3", code: "AST-003", name: "Office Chair", type: AssetType.Furniture, vendor: "Herman Miller", model: "Aeron", active: true, images: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
         ]);
         setTotalPage(1);
         setTotal(3);
@@ -92,7 +92,7 @@ export default function Page() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <Link href={`/assets/${asset.id}`}>
+              <Link href={`/assets/${asset._id}`}>
                 <DropdownMenuItem>
                   <Pencil className="mr-2 h-4 w-4" /> Edit
                 </DropdownMenuItem>
@@ -140,7 +140,7 @@ export default function Page() {
         totalPage={totalPage}
         total={total}
         onPageChange={setPage}
-        onRowClick={(asset) => router.push(`/assets/${asset.id}`)}
+        onRowClick={(asset) => router.push(`/assets/${asset._id}`)}
       />
     </div>
   );
