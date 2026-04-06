@@ -1,25 +1,116 @@
 "use client";
 
-import { Plus, Loader2, MapPin, Building2, Package } from "lucide-react";
+import { useState } from "react";
+import { ColumnDef } from "@tanstack/react-table";
+import { Plus, Loader2, Package, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { DataTable } from "@/components/ui/data-table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AssetItemStatus } from "@/types/asset-item";
-import { AssetItemSectionProps, useAssetItemSection } from "./hook";
+import { AssetItemModel, ItemStatus } from "@/types/asset-item";
+import { useApp } from "@/contexts/AppContext";
+import { formatDate } from "@/lib/formatDate";
+import { UserCell } from "@/components/ui/user-cell";
+import { AssetItemForm } from "./AssetItemForm";
+import { AssetItemEditForm } from "./AssetItemEditForm";
+import { type AssetItemSectionProps, useAssetItemSection } from "./hook";
 
-const statusStyles: Record<AssetItemStatus, string> = {
-  [AssetItemStatus.Available]: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  [AssetItemStatus.InUse]: "bg-blue-100 text-blue-700 border-blue-200",
-  [AssetItemStatus.UnderMaintenance]: "bg-amber-100 text-amber-700 border-amber-200",
-  [AssetItemStatus.Retired]: "bg-slate-100 text-slate-500 border-slate-200",
+const statusStyles: Record<ItemStatus, string> = {
+  [ItemStatus.Available]: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  [ItemStatus.InUse]: "bg-blue-100 text-blue-700 border-blue-200",
+  [ItemStatus.UnderMaintenance]: "bg-amber-100 text-amber-700 border-amber-200",
+  [ItemStatus.Retired]: "bg-slate-100 text-slate-500 border-slate-200",
 };
 
+function LocationCell({ item }: { item: AssetItemModel }) {
+  const { locationsMap } = useApp();
+  const loc = (typeof item.location === "object" && item.location) ?? locationsMap[item.locationId ?? ""];
+  return loc
+    ? <span className="text-sm">{loc.name}</span>
+    : <span className="text-muted-foreground">—</span>;
+}
+
+function buildColumns(onEdit: (item: AssetItemModel) => void): ColumnDef<AssetItemModel>[] {
+  return [
+    {
+      accessorKey: "code",
+      header: "Code",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs font-semibold text-primary">
+          {row.original.code ?? row.original._id.slice(-8).toUpperCase()}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "serialNumber",
+      header: "Serial No.",
+      cell: ({ row }) => row.original.serialNumber
+        ? <span className="text-xs font-mono">{row.original.serialNumber}</span>
+        : <span className="text-muted-foreground">—</span>,
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const s = row.original.status;
+        return (
+          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${statusStyles[s]}`}>
+            {s}
+          </span>
+        );
+      },
+    },
+    {
+      id: "location",
+      header: "Location",
+      cell: ({ row }) => <LocationCell item={row.original} />,
+    },
+    {
+      id: "createdBy",
+      header: "Created by",
+      cell: ({ row }) => <UserCell user={row.original.createdBy} />,
+    },
+    {
+      accessorKey: "createdAt",
+      header: "Created",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-xs" title={row.getValue("createdAt")}>
+          {formatDate(row.getValue("createdAt"))}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); onEdit(row.original); }}>
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+      ),
+    },
+  ];
+}
+
 export function AssetItemSection(props: AssetItemSectionProps) {
-  const { items, isLoading, locations, departments, form, createMutation, open, setOpen } =
-    useAssetItemSection(props);
+  const {
+    items, isLoading,
+    createMutation, addOpen, setAddOpen,
+    updateMutation, editItem, setEditItem,
+    bulkStatusMutation,
+  } = useAssetItemSection(props);
+
+  const [selected, setSelected] = useState<AssetItemModel[]>([]);
+  const [bulkStatus, setBulkStatus] = useState<string>("");
+
+  const columns = buildColumns(setEditItem);
+
+  const handleBulkApply = () => {
+    if (!bulkStatus || selected.length === 0) return;
+    bulkStatusMutation.mutate(
+      { assetItemId: selected.map((i) => i._id), status: bulkStatus as ItemStatus },
+      { onSuccess: () => { setSelected([]); setBulkStatus(""); } }
+    );
+  };
 
   return (
     <Card>
@@ -30,12 +121,48 @@ export function AssetItemSection(props: AssetItemSectionProps) {
             {items.length} item{items.length !== 1 ? "s" : ""} registered
           </p>
         </div>
-        <Button size="sm" onClick={() => setOpen(true)}>
+        <Button size="sm" onClick={() => setAddOpen(true)}>
           <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Items
         </Button>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="space-y-3">
+        {/* Bulk action bar — only visible when rows are selected */}
+        {selected.length > 0 && (
+          <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2">
+            <span className="text-xs text-muted-foreground shrink-0">
+              {selected.length} selected
+            </span>
+            <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as ItemStatus)}>
+              <SelectTrigger className="h-7 w-44 text-xs">
+                <SelectValue placeholder="Change status…" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.values(ItemStatus).map((s) => (
+                  <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              className="h-7 text-xs"
+              disabled={!bulkStatus || bulkStatusMutation.isPending}
+              onClick={handleBulkApply}
+            >
+              {bulkStatusMutation.isPending && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+              Apply
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs ml-auto"
+              onClick={() => setSelected([])}
+            >
+              Clear
+            </Button>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -46,91 +173,39 @@ export function AssetItemSection(props: AssetItemSectionProps) {
             <p className="text-sm">No items yet. Add some items to track.</p>
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {items.map((item) => {
-              const location = typeof item.location === "object" ? item.location : null;
-              const dept = typeof item.ownerDept === "object" ? item.ownerDept : null;
-              return (
-                <div key={item._id} className="flex items-center gap-4 py-3">
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-muted-foreground">
-                        {item._id.slice(-8).toUpperCase()}
-                      </span>
-                      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${statusStyles[item.status]}`}>
-                        {item.status}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      {location && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" /> {location.name}
-                        </span>
-                      )}
-                      {dept && (
-                        <span className="flex items-center gap-1">
-                          <Building2 className="h-3 w-3" /> {dept.name}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <DataTable
+            columns={columns}
+            data={items}
+            enableRowSelection
+            getRowId={(row) => row._id}
+            onSelectionChange={setSelected}
+          />
         )}
       </CardContent>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      {/* Add dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Asset Items</DialogTitle>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit((v) => createMutation.mutate(v))} className="space-y-4">
-              <FormField control={form.control} name="quantity" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Quantity</FormLabel>
-                  <FormControl><Input type="number" min={1} {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+          <AssetItemForm createMutation={createMutation} onCancel={() => setAddOpen(false)} />
+        </DialogContent>
+      </Dialog>
 
-              <FormField control={form.control} name="locationId" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location <span className="text-muted-foreground">(optional)</span></FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      {locations.map((l) => <SelectItem key={l._id} value={l._id}>{l.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-
-              <FormField control={form.control} name="ownerDeptId" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Owner Department <span className="text-muted-foreground">(optional)</span></FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      {departments.map((d) => <SelectItem key={d._id} value={d._id}>{d.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Add Items
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+      {/* Edit dialog */}
+      <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Item — {editItem?.code ?? editItem?._id.slice(-8).toUpperCase()}</DialogTitle>
+          </DialogHeader>
+          {editItem && (
+            <AssetItemEditForm
+              item={editItem}
+              updateMutation={updateMutation}
+              onCancel={() => setEditItem(null)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </Card>

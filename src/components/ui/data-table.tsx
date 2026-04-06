@@ -2,6 +2,7 @@ import * as React from "react"
 import {
   ColumnDef,
   ColumnFiltersState,
+  RowSelectionState,
   SortingState,
   VisibilityState,
   flexRender,
@@ -14,6 +15,7 @@ import { ChevronDown, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -30,7 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-interface DataTableProps<TData, TValue> {
+type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   searchKey?: string
@@ -43,6 +45,10 @@ interface DataTableProps<TData, TValue> {
   onPageChange?: (page: number) => void
   onSearch?: (value: string) => void
   onRowClick?: (row: TData) => void
+  // row selection
+  enableRowSelection?: boolean
+  onSelectionChange?: (rows: TData[]) => void
+  getRowId?: (row: TData) => string
 }
 
 export function DataTable<TData, TValue>({
@@ -56,24 +62,67 @@ export function DataTable<TData, TValue>({
   onPageChange,
   onSearch,
   onRowClick,
+  enableRowSelection,
+  onSelectionChange,
+  getRowId,
 }: DataTableProps<TData, TValue>) {
   const isServerPagination = onPageChange !== undefined
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   const [searchValue, setSearchValue] = React.useState("")
+
+  // prepend checkbox column when selection is enabled
+  const allColumns = React.useMemo<ColumnDef<TData, TValue>[]>(() => {
+    if (!enableRowSelection) return columns
+    const checkboxCol: ColumnDef<TData, TValue> = {
+      id: "__select__",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(v) => row.toggleSelected(!!v)}
+          aria-label="Select row"
+          onClick={(e) => e.stopPropagation()}
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    }
+    return [checkboxCol, ...columns]
+  }, [columns, enableRowSelection])
 
   const table = useReactTable({
     data,
-    columns,
+    columns: allColumns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: (updater) => {
+      setRowSelection((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater
+        onSelectionChange?.(
+          table.getRowModel().rows
+            .filter((r) => next[r.id])
+            .map((r) => r.original)
+        )
+        return next
+      })
+    },
+    enableRowSelection: !!enableRowSelection,
+    getRowId: getRowId ? (row) => getRowId(row) : undefined,
     manualPagination: isServerPagination,
-    state: { sorting, columnFilters, columnVisibility },
+    state: { sorting, columnFilters, columnVisibility, rowSelection },
   })
 
   const currentPage = page ?? 1
@@ -117,7 +166,11 @@ export function DataTable<TData, TValue>({
           </div>
         )}
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="outline" className="ml-auto" nativeButton={false} />}>
+          <DropdownMenuTrigger
+            render={
+              <button className="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 h-8 text-sm font-medium transition-all hover:bg-muted" />
+            }
+          >
             Columns <ChevronDown className="ml-2 h-4 w-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

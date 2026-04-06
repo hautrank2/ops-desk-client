@@ -8,7 +8,7 @@ export enum AssetType {
   Facility = "Facility",
 }
 
-export interface AssetModel {
+export type AssetModel = {
   _id: string;
   code: string;
   name: string;
@@ -19,8 +19,19 @@ export interface AssetModel {
   description?: string;
   images: string[];
   active: boolean;
+  createdBy?: string | UserModel;
+  updatedBy?: string | UserModel | null;
   createdAt: string;
-  updatedAt: string;
-  createdBy?: UserModel;
-  updatedBy?: UserModel;
+  updatedAt?: string | null;
+  itemCount?: AssetItemCount;
 }
+
+
+export type AssetItemCount = {
+  _id: string;
+  total: number;
+  Active: number;
+  Faulty: number;
+  Maintenance: number;
+  Retired: number;
+};

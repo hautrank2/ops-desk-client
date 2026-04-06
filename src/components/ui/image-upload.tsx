@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { ImagePlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface ImageUploadProps {
+type ImageUploadProps = {
   value?: File[];
   onChange?: (files: File[]) => void;
   maxFiles?: number;

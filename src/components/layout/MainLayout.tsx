@@ -28,7 +28,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
           <header className="sticky top-0 left-0 right-0 z-40">
             <Header />
           </header>
-          <main className="pt-14">
+          <main>
             <div className="p-6 md:p-8 max-w-screen-2xl mx-auto space-y-6">
               {children}
             </div>

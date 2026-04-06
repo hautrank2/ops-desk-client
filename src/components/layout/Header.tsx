@@ -33,7 +33,7 @@ export function Header() {
         {/* Right actions */}
         <div className="flex items-center gap-2 shrink-0">
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" nativeButton={false} />}>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
               {theme === 'light' ? <Sun className="h-4 w-4" /> : theme === 'dark' ? <Moon className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -50,7 +50,7 @@ export function Header() {
           </DropdownMenu>
 
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" className="relative h-8 w-8 rounded-full p-0" nativeButton={false} />}>
+            <DropdownMenuTrigger render={<Button variant="ghost" className="relative h-8 w-8 rounded-full p-0" />}>
               <Avatar className="h-8 w-8">
                 <AvatarImage src="" alt="User" />
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">JD</AvatarFallback>

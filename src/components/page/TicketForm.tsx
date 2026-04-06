@@ -30,7 +30,7 @@ const ticketSchema = z.object({
 
 type TicketFormValues = z.infer<typeof ticketSchema>;
 
-interface TicketFormProps {
+type TicketFormProps = {
   id?: string;
 }
 

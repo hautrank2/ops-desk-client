@@ -15,7 +15,6 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImageUpload } from "@/components/ui/image-upload";
-import { AssetItemSection } from "@/components/assets/AssetItemSection";
 import { AssetModel, AssetType } from "@/types/asset";
 import { httpClient } from "@/lib/httpClient";
 
@@ -32,7 +31,7 @@ const assetSchema = z.object({
 
 type AssetFormValues = z.infer<typeof assetSchema>;
 
-interface AssetFormProps {
+type AssetFormProps = {
   id?: string;
 }
 
@@ -145,7 +144,7 @@ export function AssetForm({ id }: AssetFormProps) {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader><CardTitle className="text-base">Basic Information</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -222,7 +221,17 @@ export function AssetForm({ id }: AssetFormProps) {
         </form>
       </Form>
 
-      {isEdit && id && <AssetItemSection assetId={id} />}
+      {isEdit && id && (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push(`/assets/${id}/asset-item`)}
+          >
+            View Asset Items
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

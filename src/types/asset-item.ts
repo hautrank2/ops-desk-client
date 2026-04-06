@@ -1,28 +1,59 @@
+import { UserModel } from './user';
 import { DepartmentModel } from './department';
 import { LocationModel } from './location';
 import { AssetModel } from './asset';
 
-export enum AssetItemStatus {
+export enum ItemStatus {
   Available = "Available",
   InUse = "InUse",
   UnderMaintenance = "UnderMaintenance",
   Retired = "Retired",
 }
 
-export interface AssetItemModel {
+// backward-compat alias
+export const AssetItemStatus = ItemStatus;
+export type AssetItemStatus = ItemStatus;
+
+export type AssetItemModel = {
   _id: string;
+  code?: string;
   asset: AssetModel | string;
   serialNumber?: string;
-  status: AssetItemStatus;
+  status: ItemStatus;
+  locationId?: string | null;
   location?: LocationModel | null;
   ownerDept?: DepartmentModel | null;
-  notes?: string;
+  owerId?: string;
+  note?: string;
+  createdBy?: string | UserModel;
+  updatedBy?: string | UserModel | null;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string | null;
 }
 
-export interface CreateAssetItemDto {
+export type CreateAssetItemDto = {
   quantity: number;
   locationId?: string;
   ownerDeptId?: string;
+}
+
+export type AssetItemQueryDto = {
+  page?: number;
+  pageSize?: number;
+  code?: string;
+  serialNumber?: string;
+  locationId?: string;
+  assetId?: string;
+  status?: ItemStatus;
+  include?: string;
+}
+
+export type UpdateAssetItemDto = {
+  assetId?: string;
+  code?: string;
+  status?: ItemStatus;
+  locationId?: string;
+  owerId?: string;
+  serialNumber?: string;
+  note?: string;
 }
