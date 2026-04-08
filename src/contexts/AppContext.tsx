@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { LocationModel } from "@/types/location";
 import { DepartmentModel } from "@/types/department";
 import { httpClient } from "@/lib/httpClient";
-import { TableResponse } from "@/types/api";
+import { TableResponse } from "@/types";
 
 type AppContextValue = {
   locations: LocationModel[];
@@ -21,17 +21,13 @@ const AppContext = createContext<AppContextValue>({
   locations: [],
   locationsMap: {},
   locationsLoading: false,
-  refetchLocations: async () => {},
+  refetchLocations: async () => { },
   departments: [],
   departmentsMap: {},
   departmentsLoading: false,
-  refetchDepartments: async () => {},
+  refetchDepartments: async () => { },
 });
 
-async function fetchAll<T>(url: string): Promise<T[]> {
-  const { data } = await httpClient.get<TableResponse<T> | T[]>(url, { params: { pageSize: 999 } });
-  return Array.isArray(data) ? data : data.items;
-}
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [locations, setLocations] = useState<LocationModel[]>([]);
@@ -41,13 +37,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const refetchLocations = useCallback(async () => {
     setLocationsLoading(true);
-    try { setLocations(await fetchAll<LocationModel>("/location")); } catch { /* silent */ }
+    try {
+      const res = await httpClient.get<TableResponse<LocationModel>>("/location");
+      setLocations(res.data.items);
+    } catch { /* silent */ }
     finally { setLocationsLoading(false); }
   }, []);
 
   const refetchDepartments = useCallback(async () => {
     setDepartmentsLoading(true);
-    try { setDepartments(await fetchAll<DepartmentModel>("/department")); } catch { /* silent */ }
+    try {
+      const res = await httpClient.get<DepartmentModel[]>("/department");
+      setDepartments(res.data);
+    } catch { /* silent */ }
     finally { setDepartmentsLoading(false); }
   }, []);
 

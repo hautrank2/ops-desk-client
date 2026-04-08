@@ -18,6 +18,7 @@ export type AssetModel = {
   purchaseUrl?: string;
   description?: string;
   images: string[];
+  imageUrls: string[];
   active: boolean;
   createdBy?: string | UserModel;
   updatedBy?: string | UserModel | null;

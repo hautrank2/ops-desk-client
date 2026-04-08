@@ -40,6 +40,7 @@ export type TicketModel = {
   dueAt?: string;
   closedAt?: string;
   images: string[];
+  imageUrls: string[];
   createdBy?: string | UserModel;
   updatedBy?: string | UserModel | null;
   createdAt: string;

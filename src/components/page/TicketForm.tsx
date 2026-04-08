@@ -14,6 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ImageUpload } from "@/components/ui/image-upload";
+import { ImageManager } from "@/components/ui/image-manager";
 import { TicketModel, TicketPriority, TicketStatus, TicketType } from "@/types/ticket";
 import { httpClient } from "@/lib/httpClient";
 
@@ -26,15 +29,12 @@ const ticketSchema = z.object({
   description: z.string().optional(),
   cause: z.string().optional(),
   note: z.string().optional(),
+  images: z.array(z.instanceof(File)).optional(),
 });
 
 type TicketFormValues = z.infer<typeof ticketSchema>;
 
-type TicketFormProps = {
-  id?: string;
-}
-
-export function TicketForm({ id }: TicketFormProps) {
+export function TicketForm({ id }: { id?: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const isEdit = !!id;
@@ -52,44 +52,40 @@ export function TicketForm({ id }: TicketFormProps) {
     resolver: zodResolver(ticketSchema),
     defaultValues: {
       code: "", title: "",
-      type: TicketType.Repair,
-      priority: TicketPriority.Medium,
-      status: TicketStatus.New,
-      description: "", cause: "", note: "",
+      type: TicketType.Repair, priority: TicketPriority.Medium, status: TicketStatus.New,
+      description: "", cause: "", note: "", images: [],
     },
   });
 
   useEffect(() => {
     if (ticket) {
       form.reset({
-        code: ticket.code,
-        title: ticket.title,
-        type: ticket.type,
-        priority: ticket.priority,
-        status: ticket.status,
-        description: ticket.description ?? "",
-        cause: ticket.cause ?? "",
-        note: ticket.note ?? "",
+        code: ticket.code, title: ticket.title,
+        type: ticket.type, priority: ticket.priority, status: ticket.status,
+        description: ticket.description ?? "", cause: ticket.cause ?? "", note: ticket.note ?? "",
+        images: [],
       });
     }
   }, [ticket, form]);
 
   const createMutation = useMutation({
     mutationFn: async (values: TicketFormValues) => {
-      const formData = new FormData();
-      Object.entries(values).forEach(([k, v]) => { if (v) formData.append(k, v); });
-      const { data } = await httpClient.post("/ticket", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      const fd = new FormData();
+      Object.entries(values).forEach(([k, v]) => {
+        if (k === "images") return;
+        if (v) fd.append(k, v as string);
+      });
+      values.images?.forEach((f) => fd.append("images", f));
+      const { data } = await httpClient.post("/ticket", fd, { headers: { "Content-Type": "multipart/form-data" } });
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tickets"] });
-      router.push("/tickets");
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["tickets"] }); router.push("/tickets"); },
   });
 
   const updateMutation = useMutation({
     mutationFn: async (values: TicketFormValues) => {
-      const { data } = await httpClient.patch(`/ticket/${id}`, values);
+      const { images: _, ...rest } = values;
+      const { data } = await httpClient.patch(`/ticket/${id}`, rest);
       return data;
     },
     onSuccess: () => {
@@ -100,19 +96,94 @@ export function TicketForm({ id }: TicketFormProps) {
   });
 
   const isPending = createMutation.isPending || updateMutation.isPending;
-
-  const onSubmit = (values: TicketFormValues) => {
-    if (isEdit) updateMutation.mutate(values);
-    else createMutation.mutate(values);
-  };
+  const onSubmit = (values: TicketFormValues) => isEdit ? updateMutation.mutate(values) : createMutation.mutate(values);
 
   if (isEdit && isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[40vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <div className="flex items-center justify-center min-h-[40vh]"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
+
+  const infoContent = (
+    <div className="grid gap-6 md:grid-cols-2">
+      <Card>
+        <CardHeader><CardTitle className="text-base">Ticket Information</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <FormField control={form.control} name="code" render={({ field }) => (
+            <FormItem><FormLabel>Ticket Code</FormLabel><FormControl><Input placeholder="TKT-001" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="title" render={({ field }) => (
+            <FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="e.g. AC leaking in Room 302" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <div className="grid grid-cols-2 gap-4">
+            <FormField control={form.control} name="type" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Type</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                  <SelectContent>{Object.values(TicketType).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="priority" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Priority</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl><SelectTrigger><SelectValue placeholder="Select priority" /></SelectTrigger></FormControl>
+                  <SelectContent>{Object.values(TicketPriority).map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
+          <FormField control={form.control} name="status" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Status</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
+                <SelectContent>{Object.values(TicketStatus).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Analysis & Notes</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <FormField control={form.control} name="cause" render={({ field }) => (
+            <FormItem><FormLabel>Root Cause</FormLabel><FormControl><Input placeholder="e.g. Blocked drainage pipe" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="note" render={({ field }) => (
+            <FormItem><FormLabel>Internal Note</FormLabel><FormControl><Textarea placeholder="Any internal notes..." {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+        </CardContent>
+      </Card>
+
+      <Card className="md:col-span-2">
+        <CardHeader><CardTitle className="text-base">Description</CardTitle></CardHeader>
+        <CardContent>
+          <FormField control={form.control} name="description" render={({ field }) => (
+            <FormItem><FormControl><Textarea placeholder="Detailed description of the issue..." className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+        </CardContent>
+      </Card>
+
+      {!isEdit && (
+        <Card className="md:col-span-2">
+          <CardHeader><CardTitle className="text-base">Images</CardTitle></CardHeader>
+          <CardContent>
+            <FormField control={form.control} name="images" render={({ field }) => (
+              <FormItem>
+                <FormControl><ImageUpload value={field.value ?? []} onChange={field.onChange} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -122,78 +193,48 @@ export function TicketForm({ id }: TicketFormProps) {
         </Button>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{isEdit ? "Edit Ticket" : "New Ticket"}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{isEdit ? `Editing ${ticket?.code}` : "Create a new maintenance ticket"}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {isEdit ? `Editing ${ticket?.code}` : "Create a new maintenance ticket"}
+          </p>
         </div>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Ticket Information</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <FormField control={form.control} name="code" render={({ field }) => (
-                  <FormItem><FormLabel>Ticket Code</FormLabel><FormControl><Input placeholder="TKT-001" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="title" render={({ field }) => (
-                  <FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="e.g. AC leaking in Room 302" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="type" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Type</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
-                        <SelectContent>{Object.values(TicketType).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="priority" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Priority</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select priority" /></SelectTrigger></FormControl>
-                        <SelectContent>{Object.values(TicketPriority).map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                </div>
-                <FormField control={form.control} name="status" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
-                      <SelectContent>{Object.values(TicketStatus).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </CardContent>
-            </Card>
+          {isEdit ? (
+            <Tabs defaultValue="info">
+              <TabsList>
+                <TabsTrigger value="info">Info</TabsTrigger>
+                <TabsTrigger value="images">
+                  Images
+                  {(ticket?.imageUrls?.length ?? 0) > 0 && (
+                    <span className="ml-1.5 rounded-full bg-primary/15 text-primary px-1.5 py-0.5 text-[10px] font-semibold">
+                      {ticket?.imageUrls?.length}
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
 
-            <Card>
-              <CardHeader><CardTitle className="text-base">Analysis & Notes</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <FormField control={form.control} name="cause" render={({ field }) => (
-                  <FormItem><FormLabel>Root Cause</FormLabel><FormControl><Input placeholder="e.g. Blocked drainage pipe" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="note" render={({ field }) => (
-                  <FormItem><FormLabel>Internal Note</FormLabel><FormControl><Textarea placeholder="Any internal notes..." {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-              </CardContent>
-            </Card>
+              <TabsContent value="info" className="mt-4">
+                {infoContent}
+              </TabsContent>
 
-            <Card className="md:col-span-2">
-              <CardHeader><CardTitle className="text-base">Description</CardTitle></CardHeader>
-              <CardContent>
-                <FormField control={form.control} name="description" render={({ field }) => (
-                  <FormItem><FormControl><Textarea placeholder="Detailed description of the issue..." className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-              </CardContent>
-            </Card>
-          </div>
+              <TabsContent value="images" className="mt-4">
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Images</CardTitle></CardHeader>
+                  <CardContent>
+                    <ImageManager
+                      imageUrls={ticket?.imageUrls ?? []}
+                      basePath={`/ticket/${id}`}
+                      invalidateKeys={[["ticket", id], ["tickets"]]}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            infoContent
+          )}
 
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>

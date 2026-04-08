@@ -1,5 +1,5 @@
-import { LocationsPage } from "@/components/locations";
+import { LocationList } from "@/components/locations";
 
 export default function Page() {
-  return <LocationsPage />;
+  return <LocationList />;
 }

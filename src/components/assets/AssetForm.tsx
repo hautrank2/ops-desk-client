@@ -14,7 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { ImageManager } from "@/components/ui/image-manager";
 import { AssetModel, AssetType } from "@/types/asset";
 import { httpClient } from "@/lib/httpClient";
 
@@ -31,11 +33,7 @@ const assetSchema = z.object({
 
 type AssetFormValues = z.infer<typeof assetSchema>;
 
-type AssetFormProps = {
-  id?: string;
-}
-
-export function AssetForm({ id }: AssetFormProps) {
+export function AssetForm({ id }: { id?: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const isEdit = !!id;
@@ -53,21 +51,16 @@ export function AssetForm({ id }: AssetFormProps) {
     resolver: zodResolver(assetSchema),
     defaultValues: {
       code: "", name: "", type: AssetType.Device,
-      vendor: "", model: "", purchaseUrl: "", description: "",
-      images: [],
+      vendor: "", model: "", purchaseUrl: "", description: "", images: [],
     },
   });
 
   useEffect(() => {
     if (asset) {
       form.reset({
-        code: asset.code,
-        name: asset.name,
-        type: asset.type,
-        vendor: asset.vendor ?? "",
-        model: asset.model ?? "",
-        purchaseUrl: asset.purchaseUrl ?? "",
-        description: asset.description ?? "",
+        code: asset.code, name: asset.name, type: asset.type,
+        vendor: asset.vendor ?? "", model: asset.model ?? "",
+        purchaseUrl: asset.purchaseUrl ?? "", description: asset.description ?? "",
         images: [],
       });
     }
@@ -82,7 +75,7 @@ export function AssetForm({ id }: AssetFormProps) {
     if (values.model) fd.append("model", values.model);
     if (values.purchaseUrl) fd.append("purchaseUrl", values.purchaseUrl);
     if (values.description) fd.append("description", values.description);
-    values.images?.forEach((file) => fd.append("images", file));
+    values.images?.forEach((f) => fd.append("images", f));
     return fd;
   };
 
@@ -93,10 +86,7 @@ export function AssetForm({ id }: AssetFormProps) {
       });
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
-      router.push("/assets");
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["assets"] }); router.push("/assets"); },
   });
 
   const updateMutation = useMutation({
@@ -114,19 +104,78 @@ export function AssetForm({ id }: AssetFormProps) {
   });
 
   const isPending = createMutation.isPending || updateMutation.isPending;
-
-  const onSubmit = (values: AssetFormValues) => {
-    if (isEdit) updateMutation.mutate(values);
-    else createMutation.mutate(values);
-  };
+  const onSubmit = (values: AssetFormValues) => isEdit ? updateMutation.mutate(values) : createMutation.mutate(values);
 
   if (isEdit && isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[40vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <div className="flex items-center justify-center min-h-[40vh]"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
+
+  const infoContent = (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Card>
+        <CardHeader><CardTitle className="text-base">Basic Information</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <FormField control={form.control} name="code" render={({ field }) => (
+            <FormItem><FormLabel>Asset Code</FormLabel><FormControl><Input placeholder="AST-001" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="name" render={({ field }) => (
+            <FormItem><FormLabel>Asset Name</FormLabel><FormControl><Input placeholder="e.g. MacBook Pro" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="type" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Asset Type</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                <SelectContent><SelectGroup>
+                  {Object.values(AssetType).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectGroup></SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Details & Logistics</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <FormField control={form.control} name="vendor" render={({ field }) => (
+            <FormItem><FormLabel>Vendor</FormLabel><FormControl><Input placeholder="e.g. Apple" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="model" render={({ field }) => (
+            <FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g. M3 Pro" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="purchaseUrl" render={({ field }) => (
+            <FormItem><FormLabel>Purchase URL</FormLabel><FormControl><Input placeholder="https://..." {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+        </CardContent>
+      </Card>
+
+      <Card className="md:col-span-2">
+        <CardHeader><CardTitle className="text-base">Description</CardTitle></CardHeader>
+        <CardContent>
+          <FormField control={form.control} name="description" render={({ field }) => (
+            <FormItem><FormControl><Textarea placeholder="Additional details about the asset..." className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+        </CardContent>
+      </Card>
+
+      {/* Images only shown in create mode here */}
+      {!isEdit && (
+        <Card className="md:col-span-2">
+          <CardHeader><CardTitle className="text-base">Images</CardTitle></CardHeader>
+          <CardContent>
+            <FormField control={form.control} name="images" render={({ field }) => (
+              <FormItem>
+                <FormControl><ImageUpload value={field.value ?? []} onChange={field.onChange} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -144,72 +193,40 @@ export function AssetForm({ id }: AssetFormProps) {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Basic Information</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <FormField control={form.control} name="code" render={({ field }) => (
-                  <FormItem><FormLabel>Asset Code</FormLabel><FormControl><Input placeholder="AST-001" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="name" render={({ field }) => (
-                  <FormItem><FormLabel>Asset Name</FormLabel><FormControl><Input placeholder="e.g. MacBook Pro" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="type" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Asset Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
-                      <SelectContent><SelectGroup>
-                        {Object.values(AssetType).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                      </SelectGroup></SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </CardContent>
-            </Card>
+          {isEdit ? (
+            <Tabs defaultValue="info">
+              <TabsList>
+                <TabsTrigger value="info">Info</TabsTrigger>
+                <TabsTrigger value="images">
+                  Images
+                  {(asset?.imageUrls?.length ?? 0) > 0 && (
+                    <span className="ml-1.5 rounded-full bg-primary/15 text-primary px-1.5 py-0.5 text-[10px] font-semibold">
+                      {asset?.imageUrls?.length}
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
 
-            <Card>
-              <CardHeader><CardTitle className="text-base">Details & Logistics</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <FormField control={form.control} name="vendor" render={({ field }) => (
-                  <FormItem><FormLabel>Vendor</FormLabel><FormControl><Input placeholder="e.g. Apple" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="model" render={({ field }) => (
-                  <FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="e.g. M3 Pro" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="purchaseUrl" render={({ field }) => (
-                  <FormItem><FormLabel>Purchase URL</FormLabel><FormControl><Input placeholder="https://..." {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-              </CardContent>
-            </Card>
+              <TabsContent value="info" className="mt-4">
+                {infoContent}
+              </TabsContent>
 
-            <Card className="md:col-span-2">
-              <CardHeader><CardTitle className="text-base">Description</CardTitle></CardHeader>
-              <CardContent>
-                <FormField control={form.control} name="description" render={({ field }) => (
-                  <FormItem><FormControl><Textarea placeholder="Additional details about the asset..." className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-              </CardContent>
-            </Card>
-
-            <Card className="md:col-span-2">
-              <CardHeader><CardTitle className="text-base">Images</CardTitle></CardHeader>
-              <CardContent>
-                <FormField control={form.control} name="images" render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <ImageUpload
-                        value={field.value ?? []}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </CardContent>
-            </Card>
-          </div>
+              <TabsContent value="images" className="mt-4">
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Images</CardTitle></CardHeader>
+                  <CardContent>
+                    <ImageManager
+                      imageUrls={asset?.imageUrls ?? []}
+                      basePath={`/asset/${id}`}
+                      invalidateKeys={[["asset", id], ["assets"]]}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            infoContent
+          )}
 
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
@@ -220,18 +237,6 @@ export function AssetForm({ id }: AssetFormProps) {
           </div>
         </form>
       </Form>
-
-      {isEdit && id && (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push(`/assets/${id}/asset-item`)}
-          >
-            View Asset Items
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

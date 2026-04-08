@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DialogFooter } from "@/components/ui/dialog";
+import { ImageManager } from "@/components/ui/image-manager";
 import { AssetItemModel, ItemStatus, UpdateAssetItemDto } from "@/types/asset-item";
 import { useApp } from "@/contexts/AppContext";
 
@@ -129,6 +130,16 @@ export function AssetItemEditForm({ item, updateMutation, onCancel }: Props) {
             <FormMessage />
           </FormItem>
         )} />
+
+        {/* Images */}
+        <div className="space-y-1.5">
+          <p className="text-sm font-medium">Images</p>
+          <ImageManager
+            imageUrls={item.imageUrls ?? []}
+            basePath={`/asset-item/${item._id}`}
+            invalidateKeys={[["asset-items"]]}
+          />
+        </div>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>

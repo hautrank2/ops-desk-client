@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { httpClient } from "@/lib/httpClient";
 import { DepartmentModel } from "@/types/department";
 import { TableResponse } from "@/types/api";
 
 export const deptSchema = z.object({
-  code: z.string().min(1, "Code is required").toUpperCase(),
+  code: z.string().min(1, "Code is required"),
   name: z.string().min(2, "Name is required"),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
@@ -20,18 +21,37 @@ export type DeptFormValues = z.infer<typeof deptSchema>;
 
 export function useDepartments() {
   const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<DepartmentModel | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const page = Number(searchParams.get("page") ?? 1);
+  const search = searchParams.get("search") ?? "";
+  const statusFilter = searchParams.get("isActive") ?? "";
+
+  const setParam = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) params.set(key, value); else params.delete(key);
+    params.delete("page");
+    router.replace(`${pathname}?${params.toString()}`);
+  };
+
+  const setPage = (p: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (p > 1) params.set("page", String(p)); else params.delete("page");
+    router.replace(`${pathname}?${params.toString()}`);
+  };
+
+  const clearFilters = () => router.replace(pathname);
+  const hasFilters = !!(search || statusFilter);
 
   const { data, isLoading } = useQuery<TableResponse<DepartmentModel>>({
-    queryKey: ["departments-list", page, search],
+    queryKey: ["departments-list", page, search, statusFilter],
     queryFn: async () => {
-      const { data } = await httpClient.get("/department", {
-        params: { page, pageSize: 10, search: search || undefined },
-      });
-      // API returns array (no pagination) — normalise
+      const params: Record<string, unknown> = { page, pageSize: 10 };
+      if (search) params.search = search;
+      if (statusFilter !== "") params.isActive = statusFilter === "true";
+      const { data } = await httpClient.get("/department", { params });
       if (Array.isArray(data)) {
         return { items: data, total: data.length, page: 1, pageSize: data.length, totalPage: 1 };
       }
@@ -39,7 +59,10 @@ export function useDepartments() {
     },
   });
 
-  const form = useForm<DeptFormValues>({
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<DepartmentModel | null>(null);
+
+  const form: UseFormReturn<DeptFormValues> = useForm<DeptFormValues>({
     resolver: zodResolver(deptSchema),
     defaultValues: { code: "", name: "", description: "", isActive: true },
   });
@@ -58,10 +81,14 @@ export function useDepartments() {
 
   const createMutation = useMutation({
     mutationFn: async (values: DeptFormValues) => {
-      const { data } = await httpClient.post("/department", values);
+      const { data } = await httpClient.post("/department", { ...values, code: values.code.toUpperCase() });
       return data;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["departments-list"] }); queryClient.invalidateQueries({ queryKey: ["departments"] }); setDialogOpen(false); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["departments-list"] });
+      queryClient.invalidateQueries({ queryKey: ["departments"] });
+      setDialogOpen(false);
+    },
   });
 
   const updateMutation = useMutation({
@@ -69,13 +96,15 @@ export function useDepartments() {
       const { data } = await httpClient.patch(`/department/${editing?._id}`, values);
       return data;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["departments-list"] }); queryClient.invalidateQueries({ queryKey: ["departments"] }); setDialogOpen(false); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["departments-list"] });
+      queryClient.invalidateQueries({ queryKey: ["departments"] });
+      setDialogOpen(false);
+    },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await httpClient.delete(`/department/${id}`);
-    },
+    mutationFn: async (id: string) => { await httpClient.delete(`/department/${id}`); },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["departments-list"] }); },
   });
 
@@ -92,7 +121,8 @@ export function useDepartments() {
     totalPage: data?.totalPage ?? 1,
     isLoading,
     page, setPage,
-    search, setSearch,
+    search, statusFilter,
+    setParam, clearFilters, hasFilters,
     dialogOpen, setDialogOpen,
     editing,
     form, onSubmit, isPending,
