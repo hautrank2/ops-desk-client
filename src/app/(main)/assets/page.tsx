@@ -67,11 +67,6 @@ export default function Page() {
         setTotalPage(data.totalPage ?? 1);
         setTotal(data.total ?? 0);
       } catch {
-        setAssets([
-          { _id: "1", code: "AST-001", name: "MacBook Pro M3", type: AssetType.IT, vendor: "Apple", model: "M3 Pro 14-inch", active: true, images: [], createdAt: new Date().toISOString() },
-          { _id: "2", code: "AST-002", name: 'Dell Monitor 27"', type: AssetType.IT, vendor: "Dell", model: "U2723QE", active: true, images: [], createdAt: new Date().toISOString() },
-          { _id: "3", code: "AST-003", name: "Office Chair", type: AssetType.Furniture, vendor: "Herman Miller", model: "Aeron", active: true, images: [], createdAt: new Date().toISOString() },
-        ]);
         setTotalPage(1); setTotal(3);
       }
     };
@@ -85,7 +80,7 @@ export default function Page() {
       cell: ({ row }) => (
         <span
           className="font-mono font-semibold text-primary cursor-pointer hover:underline"
-          onClick={(e) => { e.stopPropagation(); router.push(`/assets/${row.original._id}/asset-item`); }}
+          onClick={(e) => { e.stopPropagation(); router.push(`/assets/${row.original._id}?tab=items`); }}
         >
           {row.getValue("code")}
         </span>

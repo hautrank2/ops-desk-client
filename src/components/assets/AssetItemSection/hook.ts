@@ -30,7 +30,7 @@ export function useAssetItemSection({ assetId }: AssetItemSectionProps) {
 
   const createMutation = useMutation({
     mutationFn: async (body: Record<string, unknown>) => {
-      const { data } = await httpClient.post("/asset-item", { ...body, assetId });
+      const { data } = await httpClient.post(`/asset/${assetId}/items`, body);
       return data;
     },
     onSuccess: () => { invalidate(); setAddOpen(false); },

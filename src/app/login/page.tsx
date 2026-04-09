@@ -41,7 +41,6 @@ export default function Page() {
     setServerError(null);
     try {
       const res = await httpClient.post<LoginResponse>("/auth/signin", data);
-      console.log('login', res)
       const { token, username, role } = res.data;
       localStorage.setItem(LOCAL_KEYS.TOKEN, token);
       localStorage.setItem("OPS_DESK_USER", JSON.stringify({ username, role }));

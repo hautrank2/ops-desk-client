@@ -1,13 +1,13 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Loader2 } from "lucide-react";
 import { UseMutationResult } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DialogFooter } from "@/components/ui/dialog";
@@ -30,7 +30,7 @@ type Props = {
 export function AssetItemForm({ createMutation, onCancel }: Props) {
   const { locations, departments } = useApp();
 
-  const form = useForm<AssetItemFormValues>({
+  const { control, handleSubmit, reset, formState: { errors } } = useForm<AssetItemFormValues>({
     resolver: zodResolver(schema),
     defaultValues: { quantity: 1, locationId: "", ownerDeptId: "" },
   });
@@ -40,74 +40,83 @@ export function AssetItemForm({ createMutation, onCancel }: Props) {
     if (values.locationId) body.locationId = values.locationId;
     if (values.ownerDeptId) body.ownerDeptId = values.ownerDeptId;
     createMutation.mutate(body, {
-      onSuccess: () => form.reset({ quantity: 1, locationId: "", ownerDeptId: "" }),
+      onSuccess: () => reset({ quantity: 1, locationId: "", ownerDeptId: "" }),
     });
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <Field data-invalid={!!errors.quantity || undefined}>
+        <FieldLabel>Quantity</FieldLabel>
+        <Controller
+          control={control}
           name="quantity"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Quantity</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  min={1}
-                  {...field}
-                  onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+            <Input
+              type="number"
+              min={1}
+              aria-invalid={!!errors.quantity}
+              {...field}
+              onChange={(e) => field.onChange(e.target.valueAsNumber)}
+            />
           )}
         />
+        <FieldError errors={[errors.quantity]} />
+      </Field>
 
-        <FormField
-          control={form.control}
+      <Field data-invalid={!!errors.locationId || undefined}>
+        <FieldLabel>Location <span className="text-muted-foreground font-normal">(optional)</span></FieldLabel>
+        <Controller
+          control={control}
           name="locationId"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Location <span className="text-muted-foreground">(optional)</span></FormLabel>
-              <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                <FormControl><SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger></FormControl>
-                <SelectContent>
-                  {locations.map((l) => <SelectItem key={l._id} value={l._id}>{l.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
+            <Select
+              value={field.value ?? ""}
+              onValueChange={field.onChange}
+              items={locations.map((l) => ({ value: l._id, label: l.name }))}
+            >
+              <SelectTrigger aria-invalid={!!errors.locationId}>
+                <SelectValue placeholder="Select location" />
+              </SelectTrigger>
+              <SelectContent>
+                {locations.map((l) => <SelectItem key={l._id} value={l._id}>{l.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           )}
         />
+        <FieldError errors={[errors.locationId]} />
+      </Field>
 
-        <FormField
-          control={form.control}
+      <Field data-invalid={!!errors.ownerDeptId || undefined}>
+        <FieldLabel>Owner Department <span className="text-muted-foreground font-normal">(optional)</span></FieldLabel>
+        <Controller
+          control={control}
           name="ownerDeptId"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Owner Department <span className="text-muted-foreground">(optional)</span></FormLabel>
-              <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                <FormControl><SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger></FormControl>
-                <SelectContent>
-                  {departments.map((d) => <SelectItem key={d._id} value={d._id}>{d.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
+            <Select
+              value={field.value ?? ""}
+              onValueChange={field.onChange}
+              items={departments.map((d) => ({ value: d._id, label: d.name }))}
+            >
+              <SelectTrigger aria-invalid={!!errors.ownerDeptId}>
+                <SelectValue placeholder="Select department" />
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map((d) => <SelectItem key={d._id} value={d._id}>{d.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           )}
         />
+        <FieldError errors={[errors.ownerDeptId]} />
+      </Field>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button type="submit" disabled={createMutation.isPending}>
-            {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Add Items
-          </Button>
-        </DialogFooter>
-      </form>
-    </Form>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" disabled={createMutation.isPending}>
+          {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Add Items
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
