@@ -25,8 +25,6 @@ export type AssetItemModel = {
   ownerDept?: DepartmentModel | null;
   owerId?: string;
   note?: string;
-  images?: string[];
-  imageUrls?: string[];
   createdBy?: string | UserModel;
   updatedBy?: string | UserModel | null;
   createdAt: string;
