@@ -110,7 +110,7 @@ export function useUsers() {
   return {
     items: data?.items ?? [],
     total: data?.total ?? 0,
-    totalPage: data?.totalPage ?? 1,
+    totalPage: data?.totalPage ?? data?.totalPages ?? 1,
     isLoading,
     page, setPage,
     search, setSearch,

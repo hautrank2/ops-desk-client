@@ -130,7 +130,7 @@ export function useLocations() {
   return {
     items: data?.items ?? [],
     total: data?.total ?? 0,
-    totalPage: data?.totalPage ?? 1,
+    totalPage: data?.totalPage ?? data?.totalPages ?? 1,
     isLoading,
     page, setPage,
     search, floorFilter, statusFilter,

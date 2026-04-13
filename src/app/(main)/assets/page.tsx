@@ -64,7 +64,7 @@ export default function Page() {
 
         const { data } = await httpClient.get<TableResponse<AssetModel>>("/asset", { params });
         setAssets(data.items || []);
-        setTotalPage(data.totalPage ?? 1);
+        setTotalPage(data.totalPage ?? data.totalPages ?? 1);
         setTotal(data.total ?? 0);
       } catch {
         setTotalPage(1); setTotal(3);

@@ -75,7 +75,7 @@ export default function Page() {
         const result = Array.isArray(data) ? data : data.items;
         const meta = Array.isArray(data) ? null : data;
         setItems(result);
-        setTotalPage(meta?.totalPage ?? 1);
+        setTotalPage(meta?.totalPage ?? meta?.totalPages ?? 1);
         setTotal(meta?.total ?? result.length);
       } catch {
         setItems([]);

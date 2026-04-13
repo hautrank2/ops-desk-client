@@ -37,7 +37,7 @@ export default function Page() {
           params: { page, pageSize: PAGE_SIZE, search: search || undefined },
         });
         setTickets(data.items || []);
-        setTotalPage(data.totalPage ?? 1);
+        setTotalPage(data.totalPage ?? data.totalPages ?? 1);
         setTotal(data.total ?? 0);
       } catch (error) {
         console.error("Failed to fetch tickets", error);

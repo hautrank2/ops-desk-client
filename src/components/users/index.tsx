@@ -3,13 +3,13 @@
 import { Plus, Pencil, Trash2, Loader2, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { useUsers } from "./hook";
 
 const roleStyles: Record<string, string> = {
@@ -45,104 +45,96 @@ export function UserList() {
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="pt-4 space-y-4">
-          <div className="flex items-center gap-3">
-            <Input
-              placeholder="Search users..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="max-w-sm"
-            />
-            <span className="text-sm text-muted-foreground ml-auto">{total} total</span>
-          </div>
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Input
+            placeholder="Search users..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="max-w-sm"
+          />
+          <span className="text-sm text-muted-foreground ml-auto">{total} total</span>
+        </div>
 
-          <div className="rounded-lg border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40">
-                  <TableHead className="text-xs uppercase tracking-wide font-semibold text-muted-foreground">User</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wide font-semibold text-muted-foreground">Username</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wide font-semibold text-muted-foreground">Role</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wide font-semibold text-muted-foreground">Status</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wide font-semibold text-muted-foreground">Department</TableHead>
-                  <TableHead />
+        <div className="rounded-lg border bg-card overflow-clip">
+          <Table wrapperClassName="overflow-auto max-h-[calc(100dvh-340px)]">
+            <TableHeader className="sticky top-0 z-10 bg-card">
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="text-xs uppercase tracking-wide font-semibold text-muted-foreground">User</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide font-semibold text-muted-foreground">Username</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide font-semibold text-muted-foreground">Role</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide font-semibold text-muted-foreground">Status</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide font-semibold text-muted-foreground">Department</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                      <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+              ) : items.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">No users found.</TableCell>
+                </TableRow>
+              ) : items.map((user) => {
+                const dept = departments.find((d) => d._id === user.deptId);
+                return (
+                  <TableRow key={user._id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-7 w-7">
+                          <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                            {user.name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium">{user.name}</p>
+                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">{user.username}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${roleStyles[user.role] ?? ""}`}>
+                        {user.role}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusStyles[user.status] ?? ""}`}>
+                        {user.status}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{dept?.name ?? "—"}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEdit(user)}>
+                            <Pencil className="mr-2 h-4 w-4" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => deleteMutation.mutate(user._id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ) : items.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">No users found.</TableCell>
-                  </TableRow>
-                ) : items.map((user) => {
-                  const dept = departments.find((d) => d._id === user.deptId);
-                  return (
-                    <TableRow key={user._id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-7 w-7">
-                            <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                              {user.name.slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="text-sm font-medium">{user.name}</p>
-                            <p className="text-xs text-muted-foreground">{user.email}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">{user.username}</TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${roleStyles[user.role] ?? ""}`}>
-                          {user.role}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusStyles[user.status] ?? ""}`}>
-                          {user.status}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{dept?.name ?? "—"}</TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEdit(user)}>
-                              <Pencil className="mr-2 h-4 w-4" /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => deleteMutation.mutate(user._id)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
 
-          {totalPage > 1 && (
-            <div className="flex items-center justify-end gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
-              <span className="text-sm text-muted-foreground">Page {page} / {totalPage}</span>
-              <Button variant="outline" size="sm" disabled={page >= totalPage} onClick={() => setPage(page + 1)}>Next</Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        <TablePagination page={page} totalPage={totalPage} total={total} onPageChange={setPage} />
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">

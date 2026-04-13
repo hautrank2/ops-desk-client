@@ -191,9 +191,9 @@ export function DataTable<TData, TValue>({
         </DropdownMenu>
       </div>
 
-      <div className="rounded-lg border bg-card overflow-hidden">
-        <Table>
-          <TableHeader>
+      <div className="rounded-lg border bg-card overflow-clip">
+        <Table wrapperClassName="overflow-auto max-h-[calc(100dvh-340px)]">
+          <TableHeader className="sticky top-0 z-10 bg-card">
             {table.getHeaderGroups().map((hg) => (
               <TableRow key={hg.id} className="bg-muted/40 hover:bg-muted/40">
                 {hg.headers.map((header) => (
