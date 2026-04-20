@@ -2,8 +2,10 @@
 
 import { useParams } from "next/navigation";
 import { TicketDetail } from "@/components/tickets/TicketDetail";
+import { TicketForm } from "@/components/page/TicketForm";
 
 export default function Page() {
   const { id } = useParams<{ id: string }>();
-  return <TicketDetail id={id} />;
+  const isEdit = true;
+  return isEdit ? <TicketForm id={id} /> : <TicketDetail id={id} />;
 }
