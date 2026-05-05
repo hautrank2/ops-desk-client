@@ -1,4 +1,4 @@
-import { TicketForm } from "@/components/page/TicketForm";
+import { TicketForm } from "@/components/tickets/TicketForm";
 
 export default function Page() {
   return <TicketForm />;

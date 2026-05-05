@@ -20,7 +20,7 @@ export function Header() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <header className="w-full h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="w-full h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-full items-center gap-4 px-4 md:px-6">
         {/* Mobile: hamburger */}
         <MobileSidebar />
@@ -75,6 +75,6 @@ export function Header() {
           </DropdownMenu>
         </div>
       </div>
-    </header>
+    </div>
   );
 }

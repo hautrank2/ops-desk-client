@@ -4,9 +4,12 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { LocationModel } from "@/types/location";
 import { DepartmentModel } from "@/types/department";
 import { httpClient } from "@/lib/httpClient";
-import { TableResponse } from "@/types";
+import { TableResponse, UserRoleEnum } from "@/types";
+import { AuthPayloadModel } from "@/types/auth";
+import { LOCAL_KEYS } from "@/constants/local";
 
 type AppContextValue = {
+  authPayload: AuthPayloadModel | null;
   locations: LocationModel[];
   locationsMap: Record<string, LocationModel>;
   locationsLoading: boolean;
@@ -18,6 +21,7 @@ type AppContextValue = {
 };
 
 const AppContext = createContext<AppContextValue>({
+  authPayload: null,
   locations: [],
   locationsMap: {},
   locationsLoading: false,
@@ -28,8 +32,31 @@ const AppContext = createContext<AppContextValue>({
   refetchDepartments: async () => { },
 });
 
-
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [authPayload, setAuthPayload] = useState<AuthPayloadModel | null>(() => {
+    try {
+      const authJson = localStorage.getItem(LOCAL_KEYS.USER);
+      if (typeof authJson === 'string') {
+        const auth = JSON.parse(authJson);
+        if (typeof auth === 'object') {
+          const _id = auth._id;
+          const username = auth.username;
+          const role = auth.role;
+
+          if (
+            typeof _id === 'string' &&
+            typeof username === 'string' &&
+            (Object.values(UserRoleEnum) as string[]).includes(role)
+          ) {
+            return { _id, username, role } satisfies AuthPayloadModel;
+          }
+        }
+      }
+    } catch (err) {
+      console.log(err);
+    }
+    return null;
+  })
   const [locations, setLocations] = useState<LocationModel[]>([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [departments, setDepartments] = useState<DepartmentModel[]>([]);
@@ -65,6 +92,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider value={{
       locations, locationsMap, locationsLoading, refetchLocations,
       departments, departmentsMap, departmentsLoading, refetchDepartments,
+      authPayload
     }}>
       {children}
     </AppContext.Provider>
